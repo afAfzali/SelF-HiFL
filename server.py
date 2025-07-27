@@ -68,4 +68,7 @@ class Server:
                 return np.round(acc,2)
             else:
                 client.train_acc.append(np.round(acc,2))
+
+    def predict(self,X_data):
+        return self.model.predict(X_data)
                 
