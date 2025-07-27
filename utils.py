@@ -3,6 +3,8 @@ from openpyxl import Workbook,load_workbook
 from openpyxl.styles import Alignment,PatternFill,Border,Side
 from openpyxl.formatting.rule import FormulaRule
 from openpyxl.utils import get_column_letter
+import msvcrt
+
 
 def average_weights(w,sample_num):
     """
@@ -66,16 +68,17 @@ def check_target_client_existence(edges,client_name):
 def distribution_dataset(data_structure,num_labels,flag,file_name):
     if isinstance(data_structure,list):
         if flag=="train":
-            print("\t\t\t\ttrain:\n",file=file_name)
+            print("\n\t\t\t\ttrain:",file=file_name)
             for client in data_structure:
                 n_labels=[0]*num_labels
                 for i,j in client.x:
                     n_labels[np.argmax(j.numpy())]+=1
+                client.train_label_frequency=n_labels
                 print("--------------------",file=file_name)
                 print( client.name,":",n_labels,"-->",np.sum(n_labels),file=file_name)      
             print('\n-----------------------------------------------------------------',file=file_name)
         else:
-            print("\n\t\t\t\ttest:\n",file=file_name)
+            print("\t\t\t\ttest:",file=file_name)
             for client in data_structure:
                 n_labels=[0]*num_labels
                 for i,j in client.y:
@@ -83,14 +86,33 @@ def distribution_dataset(data_structure,num_labels,flag,file_name):
                 print("--------------------",file=file_name)
                 print( client.name,":",n_labels,"-->",np.sum(n_labels),file=file_name)
             print('\n=================================================================',file=file_name)
-    else:
-        print("\n\t\t\t\tserver test:\n",file=file_name)
+    else: 
+        print('\n=================================================================',file=file_name)
+        print("\t\t\t\tserver test:",file=file_name)
         n_labels=[0]*num_labels
         for i,j in data_structure.y:
             n_labels[np.argmax(j.numpy())]+=1
         print(" server:",n_labels,"-->",np.sum(n_labels),file=file_name) 
         print('\n=================================================================',file=file_name)
-              
+        
+def calculate_label_frequencies(edges,clients,file_name):
+    labels_frequencies=[]
+    for edge in edges:
+        for client_name in edge.cnames:
+            index=int(client_name.split('_')[1])-1
+            labels_frequencies.append(clients[index].train_label_frequency)
+    sum_per_label=np.sum(labels_frequencies,axis=0).tolist()
+    print(f"\t\t\ttrain labels frequencies  (%)\n",file=file_name)
+    for edge in edges: 
+        print(f"\t\t\t\t** {edge.name} **:",file=file_name)
+        for client_name in edge.cnames:
+            index=int(client_name.split('_')[1])-1
+            result=[np.round((x/y)*100,1) for x, y in zip(clients[index].train_label_frequency,sum_per_label)]
+            print("--------------------",file=file_name)
+            print(clients[index].name,":",result,file=file_name)
+        if edge==edges[-1] and client_name==edge.cnames[-1]:
+            continue  
+        print('\n-----------------------------------------------------------------',file=file_name)
 def plot_image(idx,X,Y,dataset):
     image=X[idx]
     plt.figure(figsize=(5,5))
