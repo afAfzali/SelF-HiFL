@@ -19,9 +19,10 @@ from utils import plot_image
 from utils import check_target_client_existence
 from utils import create_file
 from utils import save_accuracy_changes_to_excel
-from client import Client
+from utils import show_confusion_matrix
 from utils import distribution_dataset
 from utils import calculate_label_frequencies
+from client import Client
 from edgeserver import Edgeserver
 from server import Server 
 from datasets_partitioning.mnist_femnist import get_dataset
@@ -357,13 +358,13 @@ with open(fr"./{path}/results.txt", "a") as f_o:
     print("\t\t\t\tbefore HiFL :\n",file=f_o)
     print(f"the server's test data : {server.test()}",file=f_o)
 #server.model.save(fr"./{path}/my_model.h5")
+
 server.save_model(0,folder_6,"initial")   # for unlearning    1:  itr_1
 for global_r in range(1,global_round+1):    
     print(f'==================================== global round {global_r} starts now ================================================')
     server.refresh_server_buffer()
     for edge in edges:
         server.send_to_edgeserver(edge)                              
-              
     for community_r in range(1,community_round+1):
         print(f'--------------------------------------Community round {community_r} starts now ---------------------------------------') 
         for edge in edges:
@@ -493,12 +494,14 @@ for global_r in global_ul_rounds:
         for edge in edges:
             edge.send_to_server(server)
     server.aggregate()
+    _=server.test()
+    
     print(f'==================================== Global round {global_r} has ended ================================================')
 
 with open(fr"./{path}/results.txt", "a") as f_o:  
     print(f"----------------------------------------------------------------------",file=f_o)
     print("\t\t\t\tafter SelF-HiFL :\n ",file=f_o)
-    print(f"the server's test data : {server.test()}",file=f_o)
+    print(f"the server's test data : {server.test_acc[-1]}",file=f_o)
     print(f"the target client's train data : {server.test(clients[ta-1],1)}",file=f_o)
     
 for client in clients:
@@ -585,8 +588,18 @@ create_file(fr"./{path}/training accuracy of clients.xlsx",row_titles,column_tit
 save_accuracy_changes_to_excel(fr"./{path}/training accuracy of clients.xlsx",target_client,num_clients)
 
 #-------------
-row_titles=["on server's test data","on target's train data"]
+row_titles=["on server's test data","on target's train data","","test acc during unlearning"]
 data=[] 
-data.append(server.test_acc[1:])
+indices=[1,-2,-1]             #  1: learned , -1: retrained , -2:unleraned 
+#data.append(server.test_acc[1:])     # index:  0: initial   , 1: learned , -1: retrained , -2:unleraned ,  rest: unlearned in g_rounds
+data.append([server.test_acc[i] for i in indices])
 data.append(clients[ta-1].train_acc)    # ta-1: index of target client 
+data.append([])
+data.append(server.test_acc[1:-1])
 create_file(fr"./{path}/acc of target,server.xlsx",row_titles,column_titles,data)
+
+server.load_model(global_round,folder_6,"learned")
+show_confusion_matrix(fr"./{path}/acc of target,server.xlsx","learned",server,num_labels)
+
+server.load_model(global_round,folder_6,"unlearned")
+show_confusion_matrix(fr"./{path}/acc of target,server.xlsx","unlearned",server,num_labels)
