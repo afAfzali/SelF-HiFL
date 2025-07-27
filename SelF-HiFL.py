@@ -21,6 +21,7 @@ from utils import create_file
 from utils import save_accuracy_changes_to_excel
 from client import Client
 from utils import distribution_dataset
+from utils import calculate_label_frequencies
 from edgeserver import Edgeserver
 from server import Server 
 from datasets_partitioning.mnist_femnist import get_dataset
@@ -70,9 +71,10 @@ elif dataset=="mnist":
     
 elif dataset=='femnist':
     image_shape=(28,28,1)
-    num_labels=20   # number classes of 62 classes   # 🔹
+    num_labels=15   # number classes of 62 classes   # 🔹
     train_size=21000
     test_size=9000 
+    test_server_size=800
     model="cnn1"
     label_reduce=12
     batch_size=32
@@ -102,7 +104,7 @@ tracemalloc.start()
 process=psutil.Process()
 start_rss=process.memory_info().rss
 
-seed=76
+seed=138
 random.seed(seed)
 np.random.seed(seed)
 os.environ['PYTHONHASHSEED']=str(seed)
@@ -120,8 +122,8 @@ tf.config.experimental.enable_op_determinism()         # for GPU determinism (sl
 if dataset=="mnist" or dataset=="cifar10":
     X_train ,Y_train,X_test,Y_test=get_dataset(dataset,model) 
     #X_train ,Y_train,X_test,Y_test=X_train[:21000],Y_train[:21000],X_test[:9000],Y_test[:9000]
-    X_train ,Y_train=X_train[:1800],Y_train[:1800]
-    X_test,Y_test,X_test_server,Y_test_server=X_test[:100],Y_test[:100],X_test[9700:],Y_test[9700:]
+    X_train ,Y_train=X_train[:2500],Y_train[:2500]
+    X_test,Y_test,X_test_server,Y_test_server=X_test[:100],Y_test[:100],X_test[9500:],Y_test[9500:]
     
     print('1 : clients_iid (equal size)\n'
           '2 : clients_iid (nonequal size)\n'
@@ -169,7 +171,6 @@ if dataset=="mnist" or dataset=="cifar10":
         label_list=list(range(num_labels))
         X_train,Y_train,X_test,Y_test,party_labels_list=k_niid_equal_size_split_2(X_train,Y_train,X_test,
                                                                             Y_test,num_edges,label_list,k1,beta,flag1)  
-        print(type(X_train[0]))
         clients=[]
         edges=[]
         index=0  
@@ -264,7 +265,7 @@ elif dataset=="femnist":    # 1 رو حذف کنم
     print('1 : equal size\n'
           '2 : equal size + reducing writers')
     flag1=int(input('select a number:'))
-    flag=f"non-IID ({dataset})"
+    folder=f"non-IID ({dataset})"
     """
     print("\nUsing a locally saved model?\n"
             "1 : YES\n"
@@ -278,9 +279,10 @@ elif dataset=="femnist":    # 1 رو حذف کنم
         test_partitions=equal_size_split(test_size,num_labels,num_clients,"test")
         
     elif flag1==2:
+        
         print('\n** randomly are assigned clients to edgesevers **')
-        train_partitions,test_partitions=get_clients_femnist_cnn_with_reduce_writers_k_classes_2(num_clients,train_size,
-                                                                                               test_size,num_labels,label_reduce)
+        train_partitions,test_partitions,X_test_server,Y_test_server=get_clients_femnist_cnn_with_reduce_writers_k_classes_2(num_clients,train_size,
+                                                                                               test_size,num_labels,label_reduce,test_server_size)
         print("partitinong ...end !")
     
     clients=[]
@@ -336,8 +338,7 @@ with open(fr"./{path}/results.txt","w") as f_results:
     print("============================================================================",file=f_results)
     
     for edge in edges:
-        print(f'\n {edge.cnames}',file=f_results)
-        print(f' be assigned to {edge.name}',file=f_results)   
+        print(f'\t\t\t\t** {edge.name} **',file=f_results)   
         cidxs=[]
         for client_name in edge.cnames:
             index=int(client_name.split('_')[1])-1
@@ -345,6 +346,7 @@ with open(fr"./{path}/results.txt","w") as f_results:
         edge_clients=[clients[i] for i in cidxs]
         distribution_dataset(edge_clients,num_labels,"train",f_results)
         distribution_dataset(edge_clients,num_labels,"test",f_results)
+    calculate_label_frequencies(edges,clients,f_results)     # the clients of all edges 
     distribution_dataset(server,num_labels,"test",f_results)
 
 # ===========================================================================================================================
