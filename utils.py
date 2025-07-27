@@ -3,7 +3,11 @@ from openpyxl import Workbook,load_workbook
 from openpyxl.styles import Alignment,PatternFill,Border,Side
 from openpyxl.formatting.rule import FormulaRule
 from openpyxl.utils import get_column_letter
+from openpyxl.drawing.image import Image
 import msvcrt
+import matplotlib.pyplot as plt
+
+from sklearn.metrics import confusion_matrix,ConfusionMatrixDisplay
 
 
 def average_weights(w,sample_num):
@@ -113,6 +117,7 @@ def calculate_label_frequencies(edges,clients,file_name):
         if edge==edges[-1] and client_name==edge.cnames[-1]:
             continue  
         print('\n-----------------------------------------------------------------',file=file_name)
+        
 def plot_image(idx,X,Y,dataset):
     image=X[idx]
     plt.figure(figsize=(5,5))
@@ -153,8 +158,54 @@ def create_file(filename,row_titles,column_titles,data,target_client=None,num_cl
 
     for row in ws.iter_rows():
         for cell in row:
-            if cell.value:
                 cell.alignment=Alignment(horizontal='center',vertical='center')
+    wb.save(filename)
+
+def show_confusion_matrix(filename,flag,server,num_labels):                # /  لیبل رو اوکی کنم که برای همه چی جواب بده          
+    y_true=[]
+    x=[]
+    for i,j in server.y:
+        x.append(i.numpy())
+        y_true.append(np.argmax(j.numpy()))
+    y_pred=server.predict(np.array(x))
+    y_pred=np.array([np.argmax(y) for y in y_pred])
+    cm=confusion_matrix(np.array(y_true),y_pred)
+    cm_normalized=cm.astype('float')/cm.sum(axis=1)[:,np.newaxis]
+    
+    plt.figure(figsize=(num_labels,num_labels))
+    plt.imshow(cm_normalized,interpolation='none',cmap='Purples')
+    
+    # Add black grid lines to separate cells
+    for i in range(num_labels + 1):
+        plt.axhline(i-0.5,color='black',linewidth=1)
+        plt.axvline(i-0.5,color='black',linewidth=1)
+    # Annotate cells
+    for i in range(num_labels):
+        for j in range(num_labels):
+            plt.text(j,i,f"{cm[i, j]}\n({cm_normalized[i, j]:.1%})",
+                     ha="center",va="center",
+                     color="black" if cm_normalized[i, j]>0.5 else "black")
+    
+    plt.title(f'Confusion Matrix ({flag})')
+    plt.xlabel('Predicted Label')
+    plt.ylabel('True Label')
+    class_names=list(range(num_labels))                   #  بعدا بهبود داده بشه 
+    plt.xticks(np.arange(num_labels),class_names)
+    plt.yticks(np.arange(num_labels),class_names)
+    plt.tight_layout()
+    plt.savefig('confusion_matrix.png', dpi=300)
+    plt.close()
+   
+    wb=load_workbook(filename)
+    ws=wb.create_sheet(f"Confusion Matrix ({flag})")
+    img=Image('confusion_matrix.png')
+    ws.add_image(img,'A1')
+    
+    # Remove gridlines 
+    ws.sheet_view.showGridLines = False
+    for row in ws.iter_rows():
+        for cell in row:
+            cell.fill=openpyxl.styles.PatternFill(fill_type=None)
     wb.save(filename)
     
 def save_accuracy_changes_to_excel(filename,target_client,num_clients):
@@ -189,7 +240,6 @@ def save_accuracy_changes_to_excel(filename,target_client,num_clients):
     
     for row in ws.iter_rows():
         for cell in row:
-            if cell.value:  # Only align cells with content
                 cell.alignment=Alignment(horizontal='center',vertical='center')
     
     # blue_fill=PatternFill(start_color="00B0F0", end_color="00B0F0", fill_type="solid")
