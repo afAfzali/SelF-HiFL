@@ -282,8 +282,15 @@ def get_clients_femnist_cnn_with_reduce_writers_k_classes_2(num_parties,train_si
         X_test=X_test.reshape(X_test.shape[0],28,28,1).astype('float32')
         Y_test=np.array(Y_test)
         Y_test=to_categorical(Y_test,number_classes)
+
+        test_i=list(range(len(X_test)))
+        server_i=np.random.choice(test_i,test_server_size_party,replace=False)
+        test_i=list(set(test_i)-set(server_i)) 
+        X_test_server.extend(X_test[server_i])
+        Y_test_server.extend(Y_test[server_i])
+            
         train_partitions[i]=tf.data.Dataset.from_tensor_slices((X_train,Y_train))
-        test_partitions[i]=tf.data.Dataset.from_tensor_slices((X_test,Y_test))
+        test_partitions[i]=tf.data.Dataset.from_tensor_slices((X_test[test_i],Y_test[test_i]))
         del X_train,Y_train,X_test,Y_test
         gc.collect()
         
