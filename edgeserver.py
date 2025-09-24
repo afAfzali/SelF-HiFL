@@ -23,7 +23,7 @@ class Edgeserver:
     def aggregate(self,global_r=None,community_r=None,folder=None,flag=None): 
         if flag=="saving update": 
             temp_model=clone_model(self.model)
-            for client_name,client_update in self.buffer.items():       #❌ یا global_r+1?  community_r+1?
+            for client_name,client_update in self.buffer.items():      
                 temp_model.set_weights(client_update)
                 temp_model.save_weights(fr".\{folder}\itr_{global_r}_agg_{community_r}_{client_name}.h5") 
         sample_number=[]
