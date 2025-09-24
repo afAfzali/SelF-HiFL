@@ -2,6 +2,7 @@ from tensorflow.keras.models import Sequential
 from tensorflow.keras import layers
 from tensorflow.keras.layers import Dense
 import tensorflow as tf
+from xgboost import XGBClassifier
 
 
 def Mnist_CNN_1(loss,metrics,lr,image_shape,num_labels):      # book       Total params: 93,322   for mnist
@@ -100,3 +101,20 @@ def Cifar10_CNN_2(loss,metrics,lr,image_shape,num_labels):      # Total params:2
     pt=tf.keras.optimizers.SGD(learning_rate=lr)
     model.compile(loss=loss,metrics=metrics,optimizer=pt)
     return model
+
+def create_attack_model_mlp(lr,num_labels):
+    model=Sequential()
+    model.add(Dense(64,activation='relu',input_shape=(num_labels,))) 
+    model.add(Dense(2,activation='softmax'))
+    pt=tf.keras.optimizers.Adam(learning_rate=lr)     #🟪
+    # model.compile(loss='categorical_crossentropy',metrics=['accuracy','val_accuracy'],optimizer=pt)
+    model.compile(loss='categorical_crossentropy',metrics=['accuracy'],optimizer=pt)
+    return model
+
+
+def create_attack_model_xgboost(param_grid):
+    model=XGBClassifier(n_estimators=num_estimators,max_depth=max_depth,learning_rate=lr,objective='binary:logistic'
+          ,tree_method="hist",device="cuda")
+    return model
+
+# def create_attack_model_xgboost(lr,num_labels):
