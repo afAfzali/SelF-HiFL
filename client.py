@@ -19,6 +19,7 @@ class Client:
         self.model=create(dataset,model,loss,metrics,lr,image_shape,num_labels)     # # in learning and unlearning steps
         self.model_update=clone_model(self.model)    # in learning and unlearning steps 
         self.train_acc=[]
+        self.train_label_frequency=[]
         #self.acc=[]
         
     def local_model_train_and_update(self,epochs,verbose):    #,comm_r,community_r,folder)
