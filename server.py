@@ -60,8 +60,9 @@ class Server:
     def test(self,client=None,flag=None):
         if client==None:
             _,acc=self.model.evaluate(self.test_data,verbose=0)
-            self.test_acc.append(np.round(acc,2))
-            return np.round(acc,2)        
+            if flag=="save-return":
+                self.test_acc.append(np.round(acc,2))
+            return np.round(acc,2)         
         else: 
             _,acc=self.model.evaluate(client.train,verbose=0)
             if flag==1:   # print
